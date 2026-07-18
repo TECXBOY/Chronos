@@ -134,11 +134,14 @@ by an explicit allowlist in `customInstructions`, not by schema.
 - Test stubs use anonymous subclasses (no pytest-mock / unittest.mock needed) — same pattern as Java suite.
 
 ## Dashboard (dashboard/index.html)
-- **Java/Python toggle** in header switches `OUTPUTS()` between `../state/java/` and `../state/python/`
-- Switching target clears cached data and calls `loadAll()` again; shows load-bar if fetch fails for that target
-- Must be served from `chronos/` root: `python3 -m http.server 8000` then open `http://localhost:8000/dashboard/`
-- `architecture-summary.md` is NOT fetched by the dashboard JS (only the 3 files: dep-map, changelog, compliance)
-- Before/After subtitle updates to show `mvn test` or `pytest` based on active target
+- **Live hosted URL:** https://tecxboy.github.io/Chronos/ (GitHub Pages, auto-deploys on push to `main`)
+- **Java/Python toggle** in header switches `OUTPUTS()` between `state/java/` (Pages) or `../state/java/` (local)
+- Path auto-detection: `window.location.pathname.includes('/dashboard')` → local uses `../state/`, Pages uses `state/`
+- Local dev: `python3 -m http.server 8000` from `chronos/` root → `http://localhost:8000/dashboard/`
+- Switching target clears cached data; shows load-bar if target's state files don't exist (Python target = 404 → fallback)
+- `architecture-summary.md` is NOT fetched by the dashboard JS (only dep-map, changelog, compliance)
+- Pages workflow: `.github/workflows/pages.yml` — assembles `_site/` (index.html + state/) on every push to `main`
+- **Python target on Pages:** shows file-input fallback (404) until Cartographer + full Python pipeline runs and commits `state/python/` files to `main`
 
 ## Seeded Issues — Do Not Fix (either target)
 Java: `DatabaseConfig.java` and PHI fields in `Patient.java` (SEC-001, GDPR-032, GDPR-005, HIPAA-164)
