@@ -4,7 +4,7 @@
   "compliance_done": false,
   "modernizer_attempts": {},
   "last_updated": null,
-  "repo_initialized": false,
+  "repo_initialized": true,
   "repo_remote": "https://github.com/TECXBOY/Chronos.git",
   "pr_url": null
 }
