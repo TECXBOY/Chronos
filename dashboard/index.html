@@ -824,8 +824,20 @@ function readFileAsText(file) {
 
 // ─── Data loading ─────────────────────────────────────────────────────────────
 // Attempt fetch first; on failure expose file-input fallback.
-// OUTPUTS is a function — returns the path for the currently active target.
-const OUTPUTS = () => `../state/${currentTarget}/`;
+// OUTPUTS is a function — returns the correct path for the currently active target.
+//
+// Path strategy:
+//   - Local dev (served from chronos/dashboard/):
+//       dashboard/index.html → ../state/<lang>/  (one level up)
+//   - GitHub Pages (served from _site/ root, index.html at site root):
+//       index.html lives alongside state/ → state/<lang>/  (no ../)
+//
+// Detection: if the page is served from a path that ends in /dashboard/
+// (i.e. contains "/dashboard" before any trailing slash or query) we need ../;
+// otherwise (Pages, or http-server from repo root) we don't.
+const _inDashboardSubdir = window.location.pathname.includes('/dashboard');
+const OUTPUTS = () =>
+  (_inDashboardSubdir ? `../state/${currentTarget}/` : `state/${currentTarget}/`);
 
 let depData        = null;
 let changelogText  = null;

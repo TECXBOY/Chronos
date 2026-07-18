@@ -1,0 +1,48 @@
+name: Deploy Dashboard to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:          # allow manual re-deploy from the Actions tab
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deployment at a time; cancel in-progress if a new push arrives
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # The dashboard is a single self-contained HTML file that reads data
+      # from ../state/<language>/ relative paths.
+      # We bundle dashboard/ + state/ together so those relative fetches resolve.
+      - name: Assemble site directory
+        run: |
+          mkdir -p _site
+          # Dashboard entry point at root of _site
+          cp dashboard/index.html _site/index.html
+          # State data directories alongside dashboard output
+          # (../state/java/ from dashboard/index.html → _site/state/java/)
+          cp -r state _site/state
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
