@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta name="google-site-verification" content="IFFkxFqT5oVX057tSw-DrpMwHPdT-v8hNTqwgXKM4w4" />
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Chronos — Pipeline Dashboard</title>
@@ -1027,8 +1026,8 @@ function renderDiff() {
   };
 
   for (const line of lines) {
-    if (line.startsWith('## ') && !line.startsWith('## src') === false) {
-      // file heading
+    if (line.startsWith('## ')) {
+      // file heading — any ## line starts a new file section
       pushBlock();
       currentFile = line.slice(3).trim();
     } else if (line.startsWith('**Change ') && currentFile) {

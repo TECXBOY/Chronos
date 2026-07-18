@@ -1,127 +1,139 @@
-# Self-Healing Loop Log — Patient.java
+## src/main/java/com/clinic/legacy/Patient.java
 
-**File:** `src/main/java/com/clinic/legacy/Patient.java`
-**Gate command:** `mvn -q -f legacy-repo/pom.xml test`
-**Total attempts:** 2
-**Final status:** PASSED
-
----
-
-## Attempt 1 — FAILED
-
-**Change applied:**
-Regression introduced to `getAgeInYears()`: replaced `Period.between(dateOfBirth, LocalDate.now()).getYears()` with a `java.util.Date`-based arithmetic implementation:
+**Change 1 — Replace deprecated java.util.Date with java.time.LocalDate**
+**Before:**
 ```java
-Date now = new Date();
-int age = (now.getYear() + 1900) - (dateOfBirth.getYear() + 1900) - 1;
+import java.util.Date;
+private Date dateOfBirth;
+public Patient(String idStr, String fullName, String ssn, String diagnosis, Date dateOfBirth) {
+    this.dateOfBirth = dateOfBirth;
+}
+public int getAgeInYears() {
+    Date now = new Date();
+    int age = now.getYear() - dateOfBirth.getYear() - 1;
+    return age;
+}
 ```
-
-**Build result:** `BUILD FAILURE` — exit code 1
-
-**Test failure:**
-```
-PatientTest.getAgeInYears_returnsCorrectWholeYears
-expected: <30> but was: <-1871>
-```
-
-**Diagnosis:** `java.util.Date.getYear()` returns years offset from 1900 (e.g. 126 for 2026), while `LocalDate.getYear()` (used on `dateOfBirth`) returns the full year (e.g. 1996). Adding `+1900` to both compounds the mismatch: `(126 + 1900) - (1996 + 1900) - 1 = 2026 - 3896 - 1 = -1871`. The regression also violates the modernization goal by re-introducing the deprecated `java.util.Date` API. Both errors are in the same method.
-
-**Full error output:** `state/build-log.txt` (run 1)
-
----
-
-## Attempt 2 — PASSED
-
-**Change applied:**
-Restored the correct `java.time` implementation and removed the spurious `java.util.Date` import:
+**After:**
 ```java
+import java.time.LocalDate;
+import java.time.Period;
+private LocalDate dateOfBirth;
+public Patient(String idStr, String fullName, String ssn, String diagnosis, java.sql.Date dateOfBirth) {
+    this.dateOfBirth = dateOfBirth.toLocalDate();
+}
 public int getAgeInYears() {
     return Period.between(dateOfBirth, LocalDate.now()).getYears();
 }
 ```
-
-**Reasoning:** `Period.between(start, end).getYears()` correctly computes completed years taking month and day boundaries into account. `Date.getYear()` arithmetic is both deprecated and semantically broken for this use case. The fix restores the modernization goal without any other change.
-
-**Build result:** `BUILD SUCCESS` — exit code 0
-
-```
-Tests run: 5, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS — Total time: 18.799s — 2026-07-18T03:19:02Z
-```
-
-**Full output:** `state/build-log.txt` (run 2, appended)
+**Reason:** java.util.Date is deprecated; java.time.Period.between() correctly computes completed years across month/day boundaries without the getYear()+1900 offset bug that caused age=-1871 in self-healing attempt 1.
 
 ---
 
-# Self-Healing Loop Log — PatientRepository.java (Run 2, 2026-07-18)
-
-**File:** `src/main/java/com/clinic/legacy/PatientRepository.java`
-**Gate command:** `mvn -q -f legacy-repo/pom.xml test`
-**Total attempts:** 2
-**Final status:** PASSED
-
----
-
-## Attempt 1 — FAILED
-
-**Regression introduced:**
-Emptied the `for` loop body in `hashForLookup()` — the `hex` `StringBuilder` is
-never populated, so the method returns `""` for every input regardless of value.
-This compiles without errors or warnings.
-
+**Change 2 — Replace new Integer(String) constructor with Integer.parseInt()**
+**Before:**
 ```java
-// BEFORE (correct):
+this.id = new Integer(idStr);
+```
+**After:**
+```java
+this.id = Integer.parseInt(idStr);
+```
+**Reason:** Integer(String) constructor is deprecated since Java 9; Integer.parseInt() is the canonical replacement and has identical semantics for valid numeric strings.
+
+---
+
+**Change 3 — Replace StringBuffer with StringBuilder in toString()**
+**Before:**
+```java
+StringBuffer sb = new StringBuffer();
+sb.append("Patient{id=").append(id) ...
+```
+**After:**
+```java
+StringBuilder sb = new StringBuilder();
+sb.append("Patient{id=").append(id) ...
+```
+**Reason:** StringBuffer is synchronized and deprecated for single-threaded use; StringBuilder is the non-synchronized replacement with identical API and better performance.
+
+---
+
+## src/main/java/com/clinic/legacy/PatientRepository.java
+
+**Change 1 — Replace java.sql.Statement (raw concat) with PreparedStatement**
+**Before:**
+```java
+Statement stmt = conn.createStatement();
+ResultSet rs = stmt.executeQuery("SELECT * FROM patients WHERE id = " + id);
+```
+**After:**
+```java
+PreparedStatement stmt = conn.prepareStatement("SELECT * FROM patients WHERE id = ?");
+stmt.setInt(1, id);
+ResultSet rs = stmt.executeQuery();
+```
+**Reason:** Raw string concatenation into Statement is a SQL injection vector; PreparedStatement with parameterised queries eliminates the injection risk and is the modern JDBC pattern.
+
+---
+
+**Change 2 — Replace MessageDigest MD5 with SHA-256 in hashForLookup()**
+**Before:**
+```java
+MessageDigest md = MessageDigest.getInstance("MD5");
+byte[] digest = md.digest(value.getBytes(StandardCharsets.UTF_8));
+StringBuilder hex = new StringBuilder();
 for (byte b : digest) {
     hex.append(String.format("%02x", b));
 }
-
-// AFTER (regression — loop body removed):
-for (byte b : digest) {
-    // loop body missing
-}
+return hex.toString();
 ```
-
-**Build result:** `BUILD FAILURE` — exit code 1
-
-**Test failure:**
-```
-PatientRepositoryTest.hashForLookup_producesDifferentOutputForDifferentInput
-expected: not equal but was: <>
-```
-
-**Diagnosis from state/build-log.txt:**
-The value `<>` (empty string) returned for both inputs proves the hex accumulator
-is never written. The `MessageDigest` computes the SHA-256 digest correctly but the
-byte-to-hex conversion loop body is missing — `hex.toString()` returns `""` always.
-The determinism test passes (two calls to `""` are equal) but the collision test
-correctly fails (`"" equals ""`). Fix: restore `hex.append(String.format("%02x", b))`.
-
-**Full log:** `state/build-log.txt` (Attempt 1 section)
-
----
-
-## Attempt 2 — PASSED
-
-**Fix applied:**
-Restored the hex-encoding loop body:
-
+**After:**
 ```java
+MessageDigest md = MessageDigest.getInstance("SHA-256");
+byte[] digest = md.digest(value.getBytes(StandardCharsets.UTF_8));
+StringBuilder hex = new StringBuilder();
 for (byte b : digest) {
     hex.append(String.format("%02x", b));
 }
+return hex.toString();
 ```
+**Reason:** MD5 is cryptographically broken and flagged by SEC-002; SHA-256 is the minimum acceptable replacement. Note: bare unsalted hashing of SSNs remains a SEC-002 finding for the Compliance Officer — Modernizer upgrades the algorithm only.
 
-**Reasoning:** The `StringBuilder` accumulates two hex characters per byte. With a
-32-byte SHA-256 digest the result is a 64-character lowercase hex string. The empty
-loop produces `""` regardless of input — a structural logic error that only a
-value-checking test can catch at this level of specificity.
+---
 
-**Build result:** `BUILD SUCCESS` — exit code 0
+## src/main/java/com/clinic/legacy/PatientService.java
 
+**Change 1 — Replace Vector with ArrayList**
+**Before:**
+```java
+import java.util.Vector;
+Vector<Patient> results = new Vector<>();
+results.addElement(p);
 ```
-Tests run: 5, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS — 2026-07-18T03:25:26Z
+**After:**
+```java
+import java.util.ArrayList;
+import java.util.List;
+List<Patient> results = new ArrayList<>();
+results.add(p);
 ```
+**Reason:** Vector is a legacy synchronized collection deprecated for single-threaded use; ArrayList with the List interface is the standard replacement.
 
-**Full log:** `state/build-log.txt` (Attempt 2 section, appended)
+---
 
+## src/main/java/com/clinic/legacy/AuditLogger.java
+
+**Change 1 — Replace StringBuffer with StringBuilder**
+**Before:**
+```java
+StringBuffer sb = new StringBuffer();
+sb.append("[AUDIT] ").append(timestamp).append(" | ").append(patient.toString());
+```
+**After:**
+```java
+StringBuilder sb = new StringBuilder();
+sb.append("[AUDIT] ").append(timestamp).append(" | ").append(patient.toString());
+```
+**Reason:** StringBuffer is synchronized and deprecated for single-threaded use; StringBuilder is the non-synchronized replacement.
+
+---
