@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chronos — Pipeline Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Design tokens ── */
+:root {
+  --navy:       #0B1E33;
+  --panel:      #12283F;
+  --panel-alt:  #0f2138;
+  --chalk:      #E8EDF2;
+  --chalk-dim:  rgba(232,237,242,0.55);
+  --chalk-faint:rgba(232,237,242,0.18);
+  --chalk-rule: rgba(232,237,242,0.12);
+  --red:        #D64545;
+  --red-dim:    rgba(214,69,69,0.15);
+  --red-rule:   rgba(214,69,69,0.5);
+  --amber:      #E8A33D;
+  --amber-dim:  rgba(232,163,61,0.13);
+  --amber-rule: rgba(232,163,61,0.5);
+  --green:      #4CAF6D;
+  --green-dim:  rgba(76,175,109,0.12);
+  --green-rule: rgba(76,175,109,0.5);
+  --blue-line:  rgba(100,160,220,0.35);
+  --blue-node:  rgba(100,160,220,0.7);
+  --sans:       'IBM Plex Sans', system-ui, sans-serif;
+  --mono:       'IBM Plex Mono', 'Cascadia Code', Consolas, monospace;
+}
+
+/* ── Base ── */
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--chalk);
+  background: var(--navy);
+  min-height: 100vh;
+}
+
+/* ── Hairline utility ── */
+.rule { border: none; border-top: 1px solid var(--chalk-rule); margin: 0; }
+
+/* ── Header ── */
+header {
+  background: var(--panel);
+  border-bottom: 1px solid var(--chalk-rule);
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  flex-shrink: 0;
+}
+.header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+header h1 {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--chalk);
+}
+.header-tag {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--chalk-dim);
+  letter-spacing: 0.04em;
+}
+.header-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--green);
+  border: 1px solid var(--green-rule);
+  padding: 2px 8px;
+  background: var(--green-dim);
+}
+
+/* ── Target selector ── */
+.target-switcher {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--chalk-rule);
+  flex-shrink: 0;
+}
+.target-switcher button {
+  background: none;
+  border: none;
+  border-right: 1px solid var(--chalk-rule);
+  padding: 4px 14px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chalk-dim);
+  cursor: pointer;
+  transition: color .12s, background .12s;
+}
+.target-switcher button:last-child { border-right: none; }
+.target-switcher button:hover { color: var(--chalk); background: var(--faint, rgba(232,237,242,0.06)); }
+.target-switcher button.active {
+  color: var(--navy);
+  background: var(--chalk-dim);
+}
+.target-switcher button[data-target="java"].active  { background: var(--amber); color: var(--navy); }
+.target-switcher button[data-target="python"].active { background: var(--blue-node); color: var(--navy); }
+
+/* ── Load bar (CORS fallback) ── */
+#load-bar {
+  background: var(--panel-alt);
+  border-bottom: 1px solid var(--amber-rule);
+  padding: 9px 32px;
+  display: none;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--amber);
+}
+#load-bar.visible { display: flex; }
+#load-bar > span::before { content: '⚠ '; }
+#load-bar label {
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--chalk-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#load-bar input[type="file"] {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--chalk-dim);
+  background: none;
+  border: 1px solid var(--chalk-rule);
+  padding: 2px 6px;
+  cursor: pointer;
+}
+#load-bar input[type="file"]:focus { outline: 1px solid var(--amber); }
+
+/* ── Tab navigation ── */
+nav {
+  display: flex;
+  border-bottom: 1px solid var(--chalk-rule);
+  padding: 0 32px;
+  background: var(--panel);
+  gap: 0;
+}
+nav button {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 14px 20px;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chalk-dim);
+  cursor: pointer;
+  margin-bottom: -1px;
+  transition: color .15s, border-color .15s;
+  position: relative;
+}
+/* ledger-tab numbering */
+nav button::before {
+  font-family: var(--mono);
+  font-size: 10px;
+  opacity: 0.4;
+  margin-right: 7px;
+  letter-spacing: 0;
+}
+nav button:nth-child(1)::before { content: '01 /'; }
+nav button:nth-child(2)::before { content: '02 /'; }
+nav button:nth-child(3)::before { content: '03 /'; }
+nav button:hover  { color: var(--chalk); }
+nav button.active { color: var(--chalk); border-bottom-color: var(--chalk); }
+nav button:focus-visible { outline: 1px solid var(--amber); outline-offset: -2px; }
+
+/* ── Main ── */
+main { padding: 32px 32px 64px; max-width: 1140px; }
+
+.view { display: none; }
+.view.active { display: block; }
+
+/* ── Section heading ── */
+.view-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.view-title {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chalk);
+}
+.view-agent {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--chalk-dim);
+  text-transform: uppercase;
+}
+.view-subtitle {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--chalk-dim);
+  margin-bottom: 28px;
+  line-height: 1.5;
+}
+.section-rule {
+  border: none;
+  border-top: 1px solid var(--chalk-rule);
+  margin: 0 0 28px;
+}
+
+/* ══════════════════════════════════════════════════════
+   VIEW 1 — DEPENDENCY MAP  (blueprint linework)
+══════════════════════════════════════════════════════ */
+
+/* Blueprint canvas wrapper */
+#bp-canvas-wrap {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--chalk-rule);
+  overflow: hidden;
+  margin-bottom: 32px;
+}
+#bp-canvas-wrap svg {
+  display: block;
+  width: 100%;
+}
+
+/* File node card (overlaid on SVG via foreignObject-free approach — pure HTML below SVG) */
+#bp-nodes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1px;
+  border-top: 1px solid var(--chalk-rule);
+}
+
+.bp-node {
+  background: var(--panel);
+  border-right: 1px solid var(--chalk-rule);
+  padding: 18px 20px 20px;
+  position: relative;
+  transition: background .12s;
+}
+.bp-node:last-child { border-right: none; }
+.bp-node:hover { background: var(--panel-alt); }
+
+/* Blueprint corner marks — top-left registration cross */
+.bp-node::before {
+  content: '';
+  position: absolute;
+  top: 10px; left: 10px;
+  width: 8px; height: 8px;
+  border-top: 1px solid var(--blue-node);
+  border-left: 1px solid var(--blue-node);
+}
+
+.bp-node-name {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chalk);
+  margin-bottom: 3px;
+  padding-left: 6px;
+  border-left: 2px solid var(--blue-node);
+}
+.bp-node-pkg {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--chalk-dim);
+  margin-bottom: 14px;
+  letter-spacing: 0.02em;
+}
+
+.bp-field-label {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--chalk-dim);
+  margin: 10px 0 5px;
+}
+.bp-field-label:first-of-type { margin-top: 0; }
+
+.bp-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  list-style: none;
+}
+.bp-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--chalk-dim);
+  background: var(--chalk-faint);
+  border: 1px solid var(--chalk-rule);
+  padding: 1px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.bp-tag.dep {
+  color: var(--red);
+  background: var(--red-dim);
+  border-color: var(--red-rule);
+}
+.bp-empty {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--chalk-faint);
+  font-style: italic;
+}
+
+/* Status badge on node */
+.bp-status {
+  position: absolute;
+  top: 16px; right: 16px;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+}
+.bp-status.clean { color: var(--green); border: 1px solid var(--green-rule); background: var(--green-dim); }
+.bp-status.flagged { color: var(--red);   border: 1px solid var(--red-rule);   background: var(--red-dim); }
+
+/* Blueprint arch-diagram (SVG connection lines) */
+#bp-diagram {
+  width: 100%;
+  height: 120px;
+  display: block;
+  background: var(--navy);
+  border-bottom: 1px solid var(--chalk-rule);
+}
+
+/* ══════════════════════════════════════════════════════
+   VIEW 2 — BEFORE / AFTER DIFF
+══════════════════════════════════════════════════════ */
+
+.diff-section { margin-bottom: 36px; }
+
+.diff-file-heading {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--chalk-dim);
+  padding: 8px 0 8px 12px;
+  border-left: 2px solid var(--blue-node);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+}
+
+.change-card {
+  border: 1px solid var(--chalk-rule);
+  background: var(--panel);
+  margin-bottom: 12px;
+  position: relative;
+}
+/* blueprint corner mark */
+.change-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 10px; height: 10px;
+  border-top: 1px solid var(--blue-node);
+  border-left: 1px solid var(--blue-node);
+  pointer-events: none;
+}
+
+.change-title {
+  background: var(--panel-alt);
+  border-bottom: 1px solid var(--chalk-rule);
+  padding: 9px 16px;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--chalk);
+}
+
+.change-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+@media (max-width: 700px) { .change-body { grid-template-columns: 1fr; } }
+
+.diff-pane { padding: 14px 16px; }
+.diff-pane + .diff-pane { border-left: 1px solid var(--chalk-rule); }
+
+.diff-pane-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+.diff-pane.before .diff-pane-label { color: var(--red); }
+.diff-pane.after  .diff-pane-label { color: var(--green); }
+
+.diff-pane pre {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 12px 14px;
+  overflow-x: auto;
+  white-space: pre;
+  border: 1px solid var(--chalk-rule);
+  background: var(--navy);
+  color: var(--chalk-dim);
+}
+.diff-pane.before pre {
+  border-left: 2px solid var(--red-rule);
+  background: rgba(214,69,69,0.04);
+  color: #f0b8b8;
+}
+.diff-pane.after pre {
+  border-left: 2px solid var(--green-rule);
+  background: rgba(76,175,109,0.04);
+  color: #a8d9b4;
+}
+
+.change-reason {
+  padding: 8px 16px;
+  border-top: 1px solid var(--chalk-rule);
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--chalk-dim);
+  background: var(--panel-alt);
+  display: flex;
+  gap: 8px;
+}
+.change-reason::before {
+  content: '//';
+  font-family: var(--mono);
+  color: var(--chalk-faint);
+  flex-shrink: 0;
+}
+.change-reason strong { color: var(--chalk); font-weight: 500; }
+
+/* ══════════════════════════════════════════════════════
+   VIEW 3 — COMPLIANCE REPORT  (ledger stamps)
+══════════════════════════════════════════════════════ */
+
+/* Summary counters */
+.summary-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--chalk-rule);
+  border: 1px solid var(--chalk-rule);
+  margin-bottom: 32px;
+}
+@media (max-width: 600px) { .summary-bar { grid-template-columns: 1fr 1fr; } }
+
+.summary-pill {
+  background: var(--panel);
+  padding: 18px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.summary-pill .count {
+  font-family: var(--mono);
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.summary-pill .label {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.65;
+}
+.summary-pill.high   .count { color: var(--red); }
+.summary-pill.medium .count { color: var(--amber); }
+.summary-pill.low    .count { color: var(--green); }
+.summary-pill.pass   .count { color: var(--chalk-dim); }
+.summary-pill.high   { border-top: 2px solid var(--red); }
+.summary-pill.medium { border-top: 2px solid var(--amber); }
+.summary-pill.low    { border-top: 2px solid var(--green); }
+.summary-pill.pass   { border-top: 2px solid var(--chalk-rule); }
+
+/* Ledger stamp list */
+.ledger-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--chalk-rule);
+}
+
+.ledger-stamp {
+  display: grid;
+  grid-template-columns: 2px 100px 1fr 1fr;
+  gap: 0;
+  border-bottom: 1px solid var(--chalk-rule);
+  min-height: 0;
+}
+.ledger-stamp:last-child { border-bottom: none; }
+@media (max-width: 800px) {
+  .ledger-stamp { grid-template-columns: 2px 1fr; }
+  .ledger-stamp-desc, .ledger-stamp-fix { grid-column: 2; }
+}
+
+/* severity stripe */
+.ledger-stripe { width: 2px; flex-shrink: 0; }
+.ledger-stamp.High   .ledger-stripe { background: var(--red); }
+.ledger-stamp.Medium .ledger-stripe { background: var(--amber); }
+.ledger-stamp.Low    .ledger-stripe { background: var(--green); }
+
+/* rule + location cell */
+.ledger-stamp-rule {
+  padding: 14px 16px;
+  border-right: 1px solid var(--chalk-rule);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: var(--panel-alt);
+  justify-content: center;
+}
+.ledger-rule-id {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.ledger-stamp.High   .ledger-rule-id { color: var(--red); }
+.ledger-stamp.Medium .ledger-rule-id { color: var(--amber); }
+.ledger-stamp.Low    .ledger-rule-id { color: var(--green); }
+
+.ledger-sev {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  border: 1px solid;
+  padding: 1px 5px;
+  display: inline-block;
+  width: fit-content;
+}
+.ledger-stamp.High   .ledger-sev { color: var(--red);   border-color: var(--red-rule);   background: var(--red-dim); }
+.ledger-stamp.Medium .ledger-sev { color: var(--amber); border-color: var(--amber-rule); background: var(--amber-dim); }
+.ledger-stamp.Low    .ledger-sev { color: var(--green); border-color: var(--green-rule); background: var(--green-dim); }
+
+.ledger-file-loc {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--chalk-dim);
+  letter-spacing: 0.02em;
+  word-break: break-all;
+  margin-top: 2px;
+}
+
+/* description cell */
+.ledger-stamp-desc {
+  padding: 14px 18px;
+  border-right: 1px solid var(--chalk-rule);
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--chalk);
+  line-height: 1.55;
+}
+@media (max-width: 800px) {
+  .ledger-stamp-desc { border-right: none; border-bottom: 1px solid var(--chalk-rule); }
+}
+
+/* fix cell */
+.ledger-stamp-fix {
+  padding: 14px 18px;
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--chalk-dim);
+  line-height: 1.55;
+  background: var(--panel-alt);
+}
+.ledger-fix-prefix {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--chalk-faint);
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* Ledger section header (severity group) */
+.ledger-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--panel-alt);
+  border-bottom: 1px solid var(--chalk-rule);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  border-left: none;
+}
+.ledger-group-header.High   { color: var(--red);   border-top: 1px solid var(--red-rule); }
+.ledger-group-header.Medium { color: var(--amber); border-top: 1px solid var(--amber-rule); }
+.ledger-group-header.Low    { color: var(--green); border-top: 1px solid var(--green-rule); }
+.ledger-group-header:first-child { border-top: none; }
+.ledger-group-count {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
+  margin-left: auto;
+  opacity: 0.7;
+}
+
+/* ── Empty / error states ── */
+.state-msg {
+  padding: 48px 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--chalk-faint);
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+.state-msg::before { content: '// '; }
+
+/* ── Blueprint SVG diagram ── */
+.bp-diagram-wrap {
+  width: 100%;
+  background: var(--navy);
+  border: 1px solid var(--chalk-rule);
+  border-bottom: none;
+  overflow: hidden;
+  position: relative;
+}
+/* crosshatch watermark — pure CSS */
+.bp-diagram-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--chalk-rule) 1px, transparent 1px),
+    linear-gradient(90deg, var(--chalk-rule) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--navy); }
+::-webkit-scrollbar-thumb { background: var(--chalk-faint); }
+::-webkit-scrollbar-thumb:hover { background: var(--chalk-dim); }
+
+/* ── Focus rings ── */
+*:focus-visible { outline: 1px solid var(--amber); outline-offset: 2px; }
+
+/* ── Print ── */
+@media print {
+  header, nav { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .change-body { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>Chronos</h1>
+    <span class="header-tag">Legacy Modernization &amp; Compliance Pipeline</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <div class="target-switcher" id="target-switcher" aria-label="Select target language">
+      <button class="active" data-target="java">Java</button>
+      <button data-target="python">Python</button>
+    </div>
+    <span class="header-badge">Audit Dashboard</span>
+  </div>
+</header>
+
+<!-- File-input fallback shown when fetch fails (file:// CORS) -->
+<div id="load-bar">
+  <span>Could not load output files via fetch. Load them manually:</span>
+  <label>Dependency Map <input type="file" id="fi-dep"        accept=".json"></label>
+  <label>Changelog     <input type="file" id="fi-changelog"  accept=".md,.txt"></label>
+  <label>Compliance    <input type="file" id="fi-compliance" accept=".json"></label>
+</div>
+
+<nav>
+  <button class="active" data-tab="dep">Dependency Map</button>
+  <button data-tab="diff">Before / After</button>
+  <button data-tab="compliance">Compliance Report</button>
+</nav>
+
+<main>
+  <!-- VIEW 1: Dependency Map -->
+  <section id="view-dep" class="view active">
+    <div class="view-header">
+      <div class="view-title">Dependency Map</div>
+      <div class="view-agent">agent: cartographer</div>
+    </div>
+    <div class="view-subtitle">Imports, internal calls, and deprecated APIs per file — flagged issues shown in red.</div>
+    <hr class="section-rule">
+    <div id="dep-content"><p class="state-msg">Loading&hellip;</p></div>
+  </section>
+
+  <!-- VIEW 2: Before / After -->
+  <section id="view-diff" class="view">
+    <div class="view-header">
+      <div class="view-title">Before / After</div>
+      <div class="view-agent">agent: modernizer</div>
+    </div>
+    <div class="view-subtitle" id="diff-subtitle">Deprecated API replacements — one entry per change, self-healing loop verified by mvn test.</div>
+    <hr class="section-rule">
+    <div id="diff-content"><p class="state-msg">Loading&hellip;</p></div>
+  </section>
+
+  <!-- VIEW 3: Compliance Report -->
+  <section id="view-compliance" class="view">
+    <div class="view-header">
+      <div class="view-title">Compliance Report</div>
+      <div class="view-agent">agent: compliance-officer</div>
+    </div>
+    <div class="view-subtitle">Findings against SEC-001 &middot; GDPR-032 &middot; GDPR-005 &middot; HIPAA-164 &middot; SEC-002</div>
+    <hr class="section-rule">
+    <div id="compliance-content"><p class="state-msg">Loading&hellip;</p></div>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+// ─── Tab switching ────────────────────────────────────────────────────────────
+document.querySelectorAll('nav button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ─── Target selector ─────────────────────────────────────────────────────────
+let currentTarget = 'java';
+
+const TARGET_META = {
+  java:   { label: 'Java',   gate: 'mvn test',        badge: '#E8A33D' },
+  python: { label: 'Python', gate: 'pytest',           badge: '#64A0DC' },
+};
+
+document.querySelectorAll('#target-switcher button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const t = btn.dataset.target;
+    if (t === currentTarget) return;
+    currentTarget = t;
+    document.querySelectorAll('#target-switcher button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // Update Before/After subtitle to reflect the active gate command
+    const subtitle = document.getElementById('diff-subtitle');
+    if (subtitle) {
+      subtitle.textContent =
+        'Deprecated API replacements — one entry per change, self-healing loop verified by ' +
+        TARGET_META[currentTarget].gate + '.';
+    }
+    // Clear cached data and reload from the new target's state dir
+    depData        = null;
+    changelogText  = null;
+    complianceData = null;
+    // Hide load-bar in case it was shown for previous target
+    document.getElementById('load-bar').classList.remove('visible');
+    loadAll();
+  });
+});
+
+// ─── Utility ──────────────────────────────────────────────────────────────────
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = e => resolve(e.target.result);
+    r.onerror = reject;
+    r.readAsText(file);
+  });
+}
+
+// ─── Data loading ─────────────────────────────────────────────────────────────
+// Attempt fetch first; on failure expose file-input fallback.
+// OUTPUTS is a function — returns the path for the currently active target.
+const OUTPUTS = () => `../state/${currentTarget}/`;
+
+let depData        = null;
+let changelogText  = null;
+let complianceData = null;
+
+async function tryFetch(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(r.status);
+  return r.text();
+}
+
+async function loadAll() {
+  let fetchFailed = false;
+  try {
+    const [dep, cl, comp] = await Promise.all([
+      tryFetch(OUTPUTS() + 'dependency-map.json'),
+      tryFetch(OUTPUTS() + 'changelog.md'),
+      tryFetch(OUTPUTS() + 'compliance-report.json'),
+    ]);
+    depData       = JSON.parse(dep);
+    changelogText = cl;
+    complianceData = JSON.parse(comp);
+  } catch (_) {
+    fetchFailed = true;
+    document.getElementById('load-bar').classList.add('visible');
+  }
+
+  if (!fetchFailed) {
+    renderAll();
+  }
+}
+
+// File-input handlers
+document.getElementById('fi-dep').addEventListener('change', async e => {
+  if (!e.target.files[0]) return;
+  depData = JSON.parse(await readFileAsText(e.target.files[0]));
+  renderDep();
+});
+document.getElementById('fi-changelog').addEventListener('change', async e => {
+  if (!e.target.files[0]) return;
+  changelogText = await readFileAsText(e.target.files[0]);
+  renderDiff();
+});
+document.getElementById('fi-compliance').addEventListener('change', async e => {
+  if (!e.target.files[0]) return;
+  complianceData = JSON.parse(await readFileAsText(e.target.files[0]));
+  renderCompliance();
+});
+
+function renderAll() {
+  renderDep();
+  renderDiff();
+  renderCompliance();
+}
+
+// ─── VIEW 1: Dependency Map ───────────────────────────────────────────────────
+function renderDep() {
+  const el = document.getElementById('dep-content');
+  if (!depData || !depData.files || !depData.files.length) {
+    el.innerHTML = '<p class="state-msg">No dependency data available.</p>';
+    return;
+  }
+
+  // ── Blueprint SVG connection diagram ──────────────────────────────────────
+  // Lay out files in a row; draw hairline connectors to a central "spine" line.
+  const files = depData.files;
+  const N     = files.length;
+  const W     = 900, H = 110;
+  const cx    = W / 2;
+  const spineY = 55;
+  const nodeR  = 5;
+  const step   = W / (N + 1);
+
+  // Build dependency edges: if file A calls something that matches file B's name, draw an edge
+  const edges = [];
+  files.forEach((a, ai) => {
+    (a.calls || []).forEach(call => {
+      files.forEach((b, bi) => {
+        if (ai !== bi) {
+          const bName = b.path.split('/').pop().replace('.java', '');
+          if (call.startsWith(bName + '.')) edges.push([ai, bi]);
+        }
+      });
+    });
+  });
+
+  // Deduplicate edges
+  const edgeSet = [...new Set(edges.map(([a,b]) => `${Math.min(a,b)}-${Math.max(a,b)}`))];
+
+  const nodeX = i => step * (i + 1);
+  const nodeY = () => spineY;
+
+  // SVG path: spine line + drops to nodes + arc edges
+  let svgParts = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" aria-hidden="true">`;
+
+  // Spine
+  svgParts += `<line x1="${step * 0.5}" y1="${spineY}" x2="${step * (N + 0.5)}" y2="${spineY}" stroke="rgba(100,160,220,0.25)" stroke-width="1"/>`;
+
+  // Dependency arc edges
+  edgeSet.forEach(key => {
+    const [ai, bi] = key.split('-').map(Number);
+    const x1 = nodeX(ai), x2 = nodeX(bi);
+    const mx = (x1 + x2) / 2;
+    const dy = Math.abs(bi - ai) * 14 + 22;
+    svgParts += `<path d="M ${x1} ${spineY} Q ${mx} ${spineY - dy} ${x2} ${spineY}" fill="none" stroke="rgba(100,160,220,0.3)" stroke-width="1" stroke-dasharray="3 3"/>`;
+  });
+
+  // Node circles + labels
+  files.forEach((f, i) => {
+    const x   = nodeX(i);
+    const dep = (f.deprecated_apis_used || []).length > 0;
+    const col = dep ? '#D64545' : 'rgba(100,160,220,0.7)';
+    const cls = f.path.split('/').pop().replace('.java', '');
+    svgParts += `<circle cx="${x}" cy="${spineY}" r="${nodeR}" fill="${col}" stroke="${col}" stroke-width="1"/>`;
+    // drop line to label
+    svgParts += `<line x1="${x}" y1="${spineY + nodeR}" x2="${x}" y2="${H - 20}" stroke="rgba(100,160,220,0.2)" stroke-width="1"/>`;
+    // class name label
+    svgParts += `<text x="${x}" y="${H - 6}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9" fill="rgba(232,237,242,0.55)" letter-spacing="0.5">${esc(cls)}</text>`;
+  });
+
+  // Legend
+  svgParts += `<circle cx="18" cy="10" r="4" fill="rgba(100,160,220,0.7)"/><text x="26" y="14" font-family="IBM Plex Mono, monospace" font-size="8" fill="rgba(232,237,242,0.4)">clean</text>`;
+  svgParts += `<circle cx="72" cy="10" r="4" fill="#D64545"/><text x="80" y="14" font-family="IBM Plex Mono, monospace" font-size="8" fill="rgba(232,237,242,0.4)">deprecated</text>`;
+  svgParts += `<line x1="140" y1="7" x2="165" y2="7" stroke="rgba(100,160,220,0.3)" stroke-width="1" stroke-dasharray="3 3"/><text x="170" y="11" font-family="IBM Plex Mono, monospace" font-size="8" fill="rgba(232,237,242,0.4)">dependency</text>`;
+
+  svgParts += `</svg>`;
+
+  // ── Node cards ─────────────────────────────────────────────────────────────
+  const cards = files.map(f => {
+    const shortPath  = f.path.replace('src/main/java/', '');
+    const className  = shortPath.split('/').pop().replace('.java', '');
+    const depCount   = (f.deprecated_apis_used || []).length;
+    const statusCls  = depCount ? 'flagged' : 'clean';
+    const statusTxt  = depCount ? `${depCount} flagged` : 'clean';
+
+    const tagList = (items, cls) => {
+      if (!items || !items.length) return `<span class="bp-empty">none</span>`;
+      return `<ul class="bp-tag-list">${items.map(i =>
+        `<li class="bp-tag ${cls}" title="${esc(i)}">${esc(i)}</li>`
+      ).join('')}</ul>`;
+    };
+
+    return `
+      <div class="bp-node">
+        <span class="bp-status ${statusCls}">${statusTxt}</span>
+        <div class="bp-node-name">${esc(className)}.java</div>
+        <div class="bp-node-pkg">${esc(f.package)}</div>
+        <div class="bp-field-label">Imports</div>
+        ${tagList(f.imports, '')}
+        <div class="bp-field-label">Calls</div>
+        ${tagList(f.calls, '')}
+        <div class="bp-field-label">Deprecated APIs</div>
+        ${tagList(f.deprecated_apis_used, 'dep')}
+      </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="bp-diagram-wrap">${svgParts}</div>
+    <div id="bp-nodes">${cards}</div>`;
+}
+
+// ─── VIEW 2: Before/After Diff ────────────────────────────────────────────────
+function renderDiff() {
+  const el = document.getElementById('diff-content');
+  if (!changelogText) {
+    el.innerHTML = '<p class="state-msg">No changelog data available.</p>';
+    return;
+  }
+
+  // Parse changelog.md into sections grouped by file heading (## path)
+  // and individual changes (**Change N — ...**)
+  const lines = changelogText.split('\n');
+
+  // Group lines by file heading
+  const sections = []; // [{file, rawBlocks: [string]}]
+  let currentFile = null;
+  let currentBlock = [];
+
+  const pushBlock = () => {
+    if (currentFile && currentBlock.join('\n').trim()) {
+      const last = sections.find(s => s.file === currentFile);
+      if (last) last.rawBlocks.push(currentBlock.join('\n'));
+      else sections.push({ file: currentFile, rawBlocks: [currentBlock.join('\n')] });
+    }
+    currentBlock = [];
+  };
+
+  for (const line of lines) {
+    if (line.startsWith('## ') && !line.startsWith('## src') === false) {
+      // file heading
+      pushBlock();
+      currentFile = line.slice(3).trim();
+    } else if (line.startsWith('**Change ') && currentFile) {
+      pushBlock();
+      currentBlock.push(line);
+    } else if (line === '---') {
+      // separator — ignore
+    } else {
+      currentBlock.push(line);
+    }
+  }
+  pushBlock();
+
+  // Parse one raw block (a single change entry) into {title, before, after, reason}
+  function parseChangeBlock(raw) {
+    const titleMatch = raw.match(/^\*\*Change \d+[^*]*\*\*/m);
+    const title = titleMatch ? titleMatch[0].replace(/\*\*/g, '').trim() : 'Change';
+
+    // Extract code fences: **Before:** ```lang ... ``` **After:** ```lang ... ```
+    // Also handle the multiline variant with blank line before closing ```
+    const fenceRe = /```(?:\w+)?\n([\s\S]*?)```/g;
+    const fences = [];
+    let m;
+    while ((m = fenceRe.exec(raw)) !== null) fences.push(m[1]);
+
+    const before = fences[0] || '';
+    const after  = fences[1] || '';
+
+    const reasonMatch = raw.match(/\*\*Reason:\*\*\s*(.+)/);
+    const reason = reasonMatch ? reasonMatch[1].trim() : '';
+
+    return { title, before, after, reason };
+  }
+
+  if (!sections.length) {
+    el.innerHTML = '<p class="state-msg">Could not parse changelog entries.</p>';
+    return;
+  }
+
+  let html = '';
+  for (const sec of sections) {
+    const shortPath = sec.file.replace('src/main/java/', '');
+    html += `<div class="diff-section"><div class="diff-file-heading">${esc(shortPath)}</div>`;
+
+    for (const raw of sec.rawBlocks) {
+      const { title, before, after, reason } = parseChangeBlock(raw);
+      html += `
+        <div class="change-card">
+          <div class="change-title">${esc(title)}</div>
+          <div class="change-body">
+            <div class="diff-pane before">
+              <div class="diff-pane-label">Before</div>
+              <pre>${esc(before.trimEnd()) || '(no snippet)'}</pre>
+            </div>
+            <div class="diff-pane after">
+              <div class="diff-pane-label">After</div>
+              <pre>${esc(after.trimEnd()) || '(no snippet)'}</pre>
+            </div>
+          </div>
+          ${reason ? `<div class="change-reason"><strong>Reason:</strong> ${esc(reason)}</div>` : ''}
+        </div>`;
+    }
+
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+// ─── VIEW 3: Compliance Report ────────────────────────────────────────────────
+function renderCompliance() {
+  const el = document.getElementById('compliance-content');
+  if (!complianceData) {
+    el.innerHTML = '<p class="state-msg">No compliance data available.</p>';
+    return;
+  }
+
+  const { findings = [], summary = {} } = complianceData;
+  const high   = summary.high   || 0;
+  const medium = summary.medium || 0;
+  const low    = summary.low    || 0;
+  const total  = high + medium + low;
+
+  const summaryPills = `
+    <div class="summary-bar">
+      <div class="summary-pill high">
+        <span class="count">${high}</span>
+        <span class="label">High</span>
+      </div>
+      <div class="summary-pill medium">
+        <span class="count">${medium}</span>
+        <span class="label">Medium</span>
+      </div>
+      <div class="summary-pill low">
+        <span class="count">${low}</span>
+        <span class="label">Low</span>
+      </div>
+      <div class="summary-pill pass">
+        <span class="count">${total}</span>
+        <span class="label">Total findings</span>
+      </div>
+    </div>`;
+
+  if (!findings.length) {
+    el.innerHTML = summaryPills + '<p class="state-msg">No findings recorded.</p>';
+    return;
+  }
+
+  // Sort: High first, then Medium, then Low
+  const order = { High: 0, Medium: 1, Low: 2 };
+  const sorted = [...findings].sort((a, b) =>
+    (order[a.severity] ?? 9) - (order[b.severity] ?? 9));
+
+  // Group by severity for ledger section headers
+  const groups = [
+    { sev: 'High',   items: sorted.filter(f => f.severity === 'High') },
+    { sev: 'Medium', items: sorted.filter(f => f.severity === 'Medium') },
+    { sev: 'Low',    items: sorted.filter(f => f.severity === 'Low') },
+  ].filter(g => g.items.length > 0);
+
+  let ledger = '<div class="ledger-list">';
+
+  for (const grp of groups) {
+    ledger += `
+      <div class="ledger-group-header ${esc(grp.sev)}">
+        ${esc(grp.sev)} Severity
+        <span class="ledger-group-count">${grp.items.length}</span>
+      </div>`;
+
+    for (const f of grp.items) {
+      const shortFile = f.file.replace('src/main/java/', '');
+      ledger += `
+        <div class="ledger-stamp ${esc(f.severity)}">
+          <div class="ledger-stripe"></div>
+          <div class="ledger-stamp-rule">
+            <span class="ledger-rule-id">${esc(f.rule_id)}</span>
+            <span class="ledger-sev">${esc(f.severity)}</span>
+            <span class="ledger-file-loc">${esc(shortFile)}<br>line ${esc(f.line)}</span>
+          </div>
+          <div class="ledger-stamp-desc">${esc(f.description)}</div>
+          <div class="ledger-stamp-fix">
+            <span class="ledger-fix-prefix">Suggested fix</span>
+            ${esc(f.suggested_fix)}
+          </div>
+        </div>`;
+    }
+  }
+
+  ledger += '</div>';
+  el.innerHTML = summaryPills + ledger;
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+loadAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+{
+  "findings": [
+    {
+      "file": "src/main/java/com/clinic/legacy/DatabaseConfig.java",
+      "line": 13,
+      "rule_id": "SEC-001",
+      "severity": "High",
+      "description": "Hardcoded database username 'clinic_admin' committed as a public static final String. Any developer or process with read access to the source repository obtains valid database credentials.",
+      "suggested_fix": "Remove the literal value. Load DB_USER at runtime from an environment variable (System.getenv(\"DB_USER\")) or a secrets manager (e.g., AWS Secrets Manager, HashiCorp Vault). Never commit credential values to source control."
+    },
+    {
+      "file": "src/main/java/com/clinic/legacy/DatabaseConfig.java",
+      "line": 14,
+      "rule_id": "SEC-001",
+      "severity": "High",
+      "description": "Hardcoded database password 'Cl1nic#2011!' committed as a public static final String. Exposure via source control, build artifacts, or logs grants full database access to any reader.",
+      "suggested_fix": "Remove the literal value. Load DB_PASSWORD at runtime from an environment variable (System.getenv(\"DB_PASSWORD\")) or a secrets manager. Rotate the current password immediately if this repository is or has ever been remotely accessible."
+    },
+    {
+      "file": "src/main/java/com/clinic/legacy/DatabaseConfig.java",
+      "line": 17,
+      "rule_id": "SEC-001",
+      "severity": "High",
+      "description": "Live third-party notification API key ('sk_live_...') hardcoded as a public static final String. The 'sk_live_' prefix indicates a production key. Committing it to source control constitutes a credential leak.",
+      "suggested_fix": "Remove the literal value. Load NOTIFICATION_API_KEY at runtime from an environment variable (System.getenv(\"NOTIFICATION_API_KEY\")) or a secrets manager. Revoke and rotate the exposed key immediately."
+    },
+    {
+      "file": "src/main/java/com/clinic/legacy/NotificationService.java",
+      "line": 18,
+      "rule_id": "SEC-001",
+      "severity": "High",
+      "description": "The live API key is actively printed to stdout via System.out.println() on every call to sendReminder(). Even after the hardcoded value is removed from DatabaseConfig, any logging infrastructure capturing stdout will record the secret in plaintext log files.",
+      "suggested_fix": "Remove the System.out.println() statement that includes the API key. If confirmation of key usage is needed for debugging, log only the key prefix or a masked representation (e.g., 'sk_live_****') at DEBUG level, never the full value."
+    },
+    {
+      "file": "src/main/java/com/clinic/legacy/Patient.java",
+      "line": 16,
+      "rule_id": "GDPR-032",
+      "severity": "High",
+      "description": "socialSecurityNumber (SSN) is stored as a plain, unencrypted String field. GDPR Art. 32 requires appropriate technical measures to protect personal data. An SSN is a high-sensitivity identifier; storing it in plaintext means any heap dump, serialized object, or memory inspection leaks it directly.",
+      "suggested_fix": "Encrypt the SSN field at rest using a symmetric encryption wrapper (e.g., AES-256-GCM via javax.crypto) before storing it in the field, and decrypt only at the point of authorized use. Alternatively, store only a salted hash if the plaintext value is never needed after initial ingestion."
+    },
+    {
+      "file": "src/main/java/com/clinic/legacy/Patient.java",
+      "line": 19,
+      "rule_id": "GDPR-032",
+      "severity": "Medium",
+      "description": "dateOfBirth is stored as a plain LocalDate field without any encryption or access control. Date of birth is personal data under GDPR Art. 4(1) and, when combined with name and SSN, significantly increases re-identification risk.",
+      "suggested_fix": "Apply the same encryption-at-rest controls as for socialSecurityNumber, or at minimum ensure dateOfBirth is excluded from any logging, serialization, or transmission path that lacks appropriate protection."
+    },
+    {
+      "file": "src/main/java/com/clinic/legacy/PatientRepository.java",
+      "line": 25,
+      "rule_id": "GDPR-032",
+      "severity": "High",
+      "description": "The JDBC connection URL uses the plaintext 'jdbc:mysql://' scheme with no SSL/TLS parameters. All patient PII and PHI retrieved from the database — including SSNs and diagnoses — is transmitted over the network without encryption, violating GDPR Art. 32's requirement for appropriate security of data in transit.",
+      "suggested_fix": "Append SSL parameters to the connection URL: 'jdbc:mysql://legacy-clinic-db.internal:3306/patients?useSSL=true&requireSSL=true&verifyServerCertificate=true'. Ensure the database server has a valid TLS certificate configured."
+    },
+    {
+      "file": "src/main/java/com/clinic/legacy/Patient.java",
+      "line": 62,
+      "rule_id": "GDPR-005",
+      "severity": "High",
+      "description": "The toString() method concatenates the full patient record including socialSecurityNumber and diagnosis into a plain String. This method is called from AuditLogger.logAccess() and is available to any caller, making it a systemic data-minimization violation: any log statement, debug output, or exception message that includes this object will leak full PHI.",
+      "suggested_fix": "Redesign toString() to emit only non-sensitive identifiers (e.g., 'Patient{id=42}'). Create a separate method (e.g., toAuditString()) that returns only the minimum fields required for an audit trail (patient ID and name at most), and use that explicitly in AuditLogger."
+    },
+    {
+      "file": "src/main/java/com/clinic/legacy/AuditLogger.java",
+      "line": 24,
+      "rule_id": "GDPR-005",
+      "severity": "High",
+      "description": "logAccess() calls patient.toString() which includes the full SSN and diagnosis, and prints the result to stdout on every single patient record access. This creates an unencrypted, unredacted audit trail of all PHI on whatever medium captures stdout (log files, console, CI pipelines). GDPR Art. 5(1)(c) requires data minimization — an access log needs only a patient identifier, not the full record.",
+      "suggested_fix": "Replace patient.toString() with patient.getId() (or a dedicated patient.toAuditString() returning only id and name). Direct audit output to a structured, access-controlled audit log rather than stdout."
+    },
+    {
+      "file": "src/main/java/com/clinic/legacy/Patient.java",
+      "line": 17,
+      "rule_id": "HIPAA-164",
+      "severity": "High",
+      "description": "The diagnosis field contains Protected Health Information (PHI) as defined by HIPAA §164.312. It is stored as a plain, unencrypted String with no access controls. HIPAA §164.312(a)(1) requires access controls, and §164.312(e)(2)(ii) requires encryption of PHI.",
+      "suggested_fix": "Encrypt the diagnosis field at rest (AES-256-GCM or equivalent). Restrict the getDiagnosis() accessor so it is only callable by authorized roles or services — consider removing the public getter and requiring an explicit, audited access path (e.g., a service-layer method that verifies caller authorization before returning the value)."
+    },
+    {
+      "file": "src/main/java/com/clinic/legacy/Patient.java",
+      "line": 38,
+      "rule_id": "HIPAA-164",
+      "severity": "High",
+      "description": "getSocialSecurityNumber() and getDiagnosis() are public methods with no access control — any object holding a Patient reference can read PHI fields without any authorization check. HIPAA §164.312(a)(1) requires role-based access controls on PHI.",
+      "suggested_fix": "Introduce an authorization layer: pass a security context or role token to the accessor, or move PHI access into a dedicated service class that enforces role checks before returning sensitive fields. At minimum, reduce accessor visibility and document the authorization contract."
+    },
+    {
+      "file": "src/main/java/com/clinic/legacy/PatientService.java",
+      "line": 24,
+      "rule_id": "HIPAA-164",
+      "severity": "High",
+      "description": "getAllPatients() returns the complete list of every patient record — including PHI fields — to any caller with no authentication or authorization check. HIPAA §164.312(a)(1) requires that access to PHI be limited to authorized users and roles.",
+      "suggested_fix": "Add an authorization parameter (e.g., a UserContext or role token) to getAllPatients(). Verify the caller has the required role before executing the query. Consider returning a projection (PatientSummary without PHI fields) for callers who do not need full records."
+    },
+    {
+      "file": "src/main/java/com/clinic/legacy/PatientRepository.java",
+      "line": 54,
+      "rule_id": "SEC-002",
+      "severity": "Medium",
+      "description": "SHA-256 is applied as a bare, unsalted hash to SSN values in hashForLookup(). SSNs occupy a small, enumerable space (9-digit numbers with known format). An attacker with access to the hash output can reverse it via precomputation or rainbow table in seconds. The Modernizer replaced MD5 with SHA-256, which is not itself broken, but the usage pattern remains insecure for this data type.",
+      "suggested_fix": "Replace the bare SHA-256 hash with a password-hashing function designed for low-entropy inputs: use PBKDF2WithHmacSHA256 (javax.crypto), BCrypt, or Argon2 with a per-record random salt stored alongside the hash. This makes precomputation attacks computationally infeasible."
+    }
+  ],
+  "summary": {
+    "high": 11,
+    "medium": 2,
+    "low": 0
+  }
+}

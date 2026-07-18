@@ -1,0 +1,119 @@
+{
+  "files": [
+    {
+      "path": "src/main/java/com/clinic/legacy/Main.java",
+      "package": "com.clinic.legacy",
+      "imports": [
+        "java.util.Vector"
+      ],
+      "calls": [
+        "PatientService.getAllPatients",
+        "PatientService.sendAllReminders"
+      ],
+      "deprecated_apis_used": [
+        "java.util.Vector"
+      ]
+    },
+    {
+      "path": "src/main/java/com/clinic/legacy/PatientService.java",
+      "package": "com.clinic.legacy",
+      "imports": [
+        "java.util.Vector"
+      ],
+      "calls": [
+        "PatientRepository.findAll",
+        "PatientRepository.hashForLookup",
+        "AuditLogger.logAccess",
+        "NotificationService.sendReminder",
+        "Vector.elementAt"
+      ],
+      "deprecated_apis_used": [
+        "java.util.Vector",
+        "Vector.elementAt"
+      ]
+    },
+    {
+      "path": "src/main/java/com/clinic/legacy/PatientRepository.java",
+      "package": "com.clinic.legacy",
+      "imports": [
+        "java.security.MessageDigest",
+        "java.security.NoSuchAlgorithmException",
+        "java.sql.Connection",
+        "java.sql.DriverManager",
+        "java.sql.ResultSet",
+        "java.sql.Statement",
+        "java.util.Vector"
+      ],
+      "calls": [
+        "DriverManager.getConnection",
+        "Statement.executeQuery",
+        "MessageDigest.getInstance",
+        "DatabaseConfig.DB_URL",
+        "DatabaseConfig.DB_USER",
+        "DatabaseConfig.DB_PASSWORD"
+      ],
+      "deprecated_apis_used": [
+        "java.util.Vector",
+        "java.sql.Statement (raw, non-parameterized — SQL injection risk)",
+        "MessageDigest with MD5 algorithm (cryptographically broken)"
+      ]
+    },
+    {
+      "path": "src/main/java/com/clinic/legacy/Patient.java",
+      "package": "com.clinic.legacy",
+      "imports": [
+        "java.util.Date"
+      ],
+      "calls": [
+        "new Integer(String) constructor",
+        "Date.getYear",
+        "StringBuffer.append"
+      ],
+      "deprecated_apis_used": [
+        "java.util.Date",
+        "Date.getYear (deprecated since JDK 1.1)",
+        "new Integer(String) constructor (deprecated since Java 9)",
+        "StringBuffer (use StringBuilder for single-threaded contexts)"
+      ]
+    },
+    {
+      "path": "src/main/java/com/clinic/legacy/AuditLogger.java",
+      "package": "com.clinic.legacy",
+      "imports": [
+        "java.util.Date"
+      ],
+      "calls": [
+        "Date.getMonth",
+        "Date.getDate",
+        "Date.getYear",
+        "Patient.toString"
+      ],
+      "deprecated_apis_used": [
+        "java.util.Date",
+        "Date.getMonth (deprecated since JDK 1.1)",
+        "Date.getDate (deprecated since JDK 1.1)",
+        "Date.getYear (deprecated since JDK 1.1)"
+      ]
+    },
+    {
+      "path": "src/main/java/com/clinic/legacy/NotificationService.java",
+      "package": "com.clinic.legacy",
+      "imports": [],
+      "calls": [
+        "DatabaseConfig.NOTIFICATION_API_KEY",
+        "Patient.getFullName",
+        "StringBuffer.append"
+      ],
+      "deprecated_apis_used": [
+        "StringBuffer (use StringBuilder for single-threaded contexts)"
+      ]
+    },
+    {
+      "path": "src/main/java/com/clinic/legacy/DatabaseConfig.java",
+      "package": "com.clinic.legacy",
+      "imports": [],
+      "calls": [],
+      "deprecated_apis_used": []
+    }
+  ]
+}

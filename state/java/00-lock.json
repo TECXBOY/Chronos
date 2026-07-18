@@ -1,0 +1,13 @@
+{
+  "cartographer_done": true,
+  "modernizer_done": true,
+  "compliance_done": true,
+  "modernizer_attempts": {
+    "Patient.java": 0,
+    "PatientRepository.java": 0
+  },
+  "last_updated": "2026-07-18",
+  "repo_initialized": false,
+  "repo_remote": "https://github.com/TECXBOY/Chronos.git",
+  "pr_url": null
+}

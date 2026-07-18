@@ -1,0 +1,14 @@
+# Java build output
+legacy-repo/target/
+
+# Python bytecode
+legacy-repo-python/**/__pycache__/
+legacy-repo-python/**/*.pyc
+legacy-repo-python/**/*.pyo
+legacy-repo-python/.pytest_cache/
+
+# macOS
+.DS_Store
+
+# Bob IDE session files
+.bob/.session/

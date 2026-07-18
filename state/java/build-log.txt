@@ -1,0 +1,126 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------< com.clinic.legacy:clinic-records-legacy >---------------
+[INFO] Building clinic-records-legacy 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ clinic-records-legacy ---
+[INFO] skip non existing resourceDirectory /Users/tecxkhalil/developnment/chronos/legacy-repo/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ clinic-records-legacy ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 7 source files with javac [debug target 11] to target/classes
+[WARNING] location of system modules is not set in conjunction with -source 11
+  not setting the location of system modules may lead to class files that cannot run on JDK 11
+    --release 11 is recommended instead of -source 11 -target 11 because it sets the location of system modules automatically
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ clinic-records-legacy ---
+[INFO] skip non existing resourceDirectory /Users/tecxkhalil/developnment/chronos/legacy-repo/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ clinic-records-legacy ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 3 source files with javac [debug target 11] to target/test-classes
+[WARNING] location of system modules is not set in conjunction with -source 11
+  not setting the location of system modules may lead to class files that cannot run on JDK 11
+    --release 11 is recommended instead of -source 11 -target 11 because it sets the location of system modules automatically
+[INFO] 
+[INFO] --- surefire:3.2.5:test (default-test) @ clinic-records-legacy ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.clinic.legacy.PatientServiceTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.489 s -- in com.clinic.legacy.PatientServiceTest
+[INFO] Running com.clinic.legacy.PatientRepositoryTest
+[ERROR] Tests run: 2, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 0.276 s <<< FAILURE! -- in com.clinic.legacy.PatientRepositoryTest
+[ERROR] com.clinic.legacy.PatientRepositoryTest.hashForLookup_producesDifferentOutputForDifferentInput -- Time elapsed: 0.035 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: hashForLookup() must return distinct values for distinct inputs ==> expected: not equal but was: <>
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:152)
+	at org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)
+	at org.junit.jupiter.api.AssertNotEquals.failEqual(AssertNotEquals.java:277)
+	at org.junit.jupiter.api.AssertNotEquals.assertNotEquals(AssertNotEquals.java:263)
+	at org.junit.jupiter.api.Assertions.assertNotEquals(Assertions.java:2832)
+	at com.clinic.legacy.PatientRepositoryTest.hashForLookup_producesDifferentOutputForDifferentInput(PatientRepositoryTest.java:25)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
+
+[INFO] Running com.clinic.legacy.PatientTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.031 s -- in com.clinic.legacy.PatientTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[ERROR] Failures: 
+[ERROR]   PatientRepositoryTest.hashForLookup_producesDifferentOutputForDifferentInput:25 hashForLookup() must return distinct values for distinct inputs ==> expected: not equal but was: <>
+[INFO] 
+[ERROR] Tests run: 5, Failures: 1, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  18.659 s
+[INFO] Finished at: 2026-07-18T03:25:26Z
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project clinic-records-legacy: There are test failures.
+[ERROR] 
+[ERROR] Please refer to /Users/tecxkhalil/developnment/chronos/legacy-repo/target/surefire-reports for the individual test results.
+[ERROR] Please refer to dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------< com.clinic.legacy:clinic-records-legacy >---------------
+[INFO] Building clinic-records-legacy 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ clinic-records-legacy ---
+[INFO] skip non existing resourceDirectory /Users/tecxkhalil/developnment/chronos/legacy-repo/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ clinic-records-legacy ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 7 source files with javac [debug target 11] to target/classes
+[WARNING] location of system modules is not set in conjunction with -source 11
+  not setting the location of system modules may lead to class files that cannot run on JDK 11
+    --release 11 is recommended instead of -source 11 -target 11 because it sets the location of system modules automatically
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ clinic-records-legacy ---
+[INFO] skip non existing resourceDirectory /Users/tecxkhalil/developnment/chronos/legacy-repo/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ clinic-records-legacy ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 3 source files with javac [debug target 11] to target/test-classes
+[WARNING] location of system modules is not set in conjunction with -source 11
+  not setting the location of system modules may lead to class files that cannot run on JDK 11
+    --release 11 is recommended instead of -source 11 -target 11 because it sets the location of system modules automatically
+[INFO] 
+[INFO] --- surefire:3.2.5:test (default-test) @ clinic-records-legacy ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.clinic.legacy.PatientServiceTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.458 s -- in com.clinic.legacy.PatientServiceTest
+[INFO] Running com.clinic.legacy.PatientRepositoryTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.170 s -- in com.clinic.legacy.PatientRepositoryTest
+[INFO] Running com.clinic.legacy.PatientTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.150 s -- in com.clinic.legacy.PatientTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  11.633 s
+[INFO] Finished at: 2026-07-18T03:26:06Z
+[INFO] ------------------------------------------------------------------------
