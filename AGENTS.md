@@ -16,91 +16,59 @@ chronos/
 │   ├── pom.xml                    # JUnit 5.10.2 + Surefire 3.2.5; compiler source/target=11
 │   └── src/
 │       ├── main/java/com/clinic/legacy/   # 7 classes, single flat package
-│       └── test/java/com/clinic/legacy/   # 5 JUnit 5 tests
+│       └── test/java/com/clinic/legacy/   # 5 JUnit 5 tests (no Mockito — anonymous subclasses only)
 ├── legacy-repo-python/            # Python 2 target — seeded compliance issues must NOT be fixed
-│   ├── clinic/                    # 6 modules (config, patient, patient_repository,
-│   │   └── ...                    #   audit_logger, notification_service, main) + __init__.py
-│   └── tests/                     # 5 pytest tests (test_patient, test_patient_repository,
-│       └── ...                    #   test_notification_service) + conftest.py
+│   ├── clinic/                    # 6 modules + __init__.py; sys.path.insert used in tests (no pip install)
+│   └── tests/                     # 5 pytest tests + conftest.py
 ├── state/
-│   ├── java/                      # All Java pipeline outputs (cartographer_done: true, fully populated)
-│   │   ├── 00-lock.json
-│   │   ├── dependency-map.json
-│   │   ├── architecture-summary.md
-│   │   ├── changelog.md
-│   │   ├── build-log.txt
-│   │   ├── compliance-report.json
-│   │   └── pr-draft.md
-│   └── python/                    # Python pipeline state (cartographer_done: false — not yet run)
-│       └── 00-lock.json
-├── outputs/                       # v1 artifacts (kept, reference only — not read by dashboard)
-└── dashboard/index.html           # Single self-contained file; Java/Python toggle in header
+│   ├── java/                      # All pipeline outputs (all 3 flags true, PR #1 merged)
+│   └── python/                    # Only 00-lock.json present (all flags false — pipeline not yet run)
+├── outputs/                       # v1 artifacts only — not read by dashboard or pipeline
+└── dashboard/index.html           # Single self-contained HTML; Java/Python toggle in header
 ```
 
 ## Build & Test Commands
 ```bash
-# ── Java ──────────────────────────────────────────────────────────
-# Run all 5 tests
-mvn -f legacy-repo/pom.xml test
+# ── Java ──────────────────────────────────────────────────────────────────────
+mvn -f legacy-repo/pom.xml test                                    # all 5 tests
+mvn -q -f legacy-repo/pom.xml test                                 # quiet (self-healing loop gate)
+mvn -f legacy-repo/pom.xml test -Dtest=PatientRepositoryTest       # single class
+mvn -f legacy-repo/pom.xml test -Dtest=PatientTest#getAgeInYears_returnsCorrectWholeYears  # single method
 
-# Quiet mode (used by self-healing loop)
-mvn -q -f legacy-repo/pom.xml test
-
-# Single test class
-mvn -f legacy-repo/pom.xml test -Dtest=PatientRepositoryTest
-
-# Single test method
-mvn -f legacy-repo/pom.xml test -Dtest=PatientTest#getAgeInYears_returnsCorrectWholeYears
-
-# ── Python ────────────────────────────────────────────────────────
-# Run all 5 tests (from repo root)
-python3 -m pytest legacy-repo-python/tests/ -v
-
-# Quiet mode (used by self-healing loop)
-python3 -m pytest legacy-repo-python/tests/ -q
-
-# Single test file
-python3 -m pytest legacy-repo-python/tests/test_patient.py -v
-
-# Single test
+# ── Python ────────────────────────────────────────────────────────────────────
+python3 -m pytest legacy-repo-python/tests/ -v                     # all 5 tests
+python3 -m pytest legacy-repo-python/tests/ -q                     # quiet (self-healing loop gate)
+python3 -m pytest legacy-repo-python/tests/test_patient.py -v      # single file
 python3 -m pytest legacy-repo-python/tests/test_patient.py::test_get_age_in_years_returns_correct_whole_years -v
 ```
-Maven: `/usr/local/Cellar/maven/3.9.16/` (Homebrew, JDK 25). `java -version` may show 1.8 on PATH but Maven
-picks up JDK 25 correctly. Python: 3.14.3, pytest 9.1.0.
+All commands run from the repo root. No `cd` required.
+**Maven:** `/usr/local/Cellar/maven/3.9.16/` (JDK 25 via Homebrew; `java -version` may show 1.8 on PATH — Maven picks up JDK 25 correctly regardless).
+**Python:** 3.14.3, pytest 9.1.0.
 
-## Pipeline & Modes (v3 — language-agnostic)
-All three modes accept a target directory + language as input. They read/write `state/<lang>/`.
+## Pipeline & Modes (v3)
+All three modes read/write `state/<lang>/` and detect target language from file extensions.
 
-| Mode slug | Tool permissions | Startup gate | Output |
-|---|---|---|---|
-| `cartographer` | `read` + `edit` (fileRegex: `state/(java\|python)/...`) | none | `state/<lang>/dependency-map.json`, `state/<lang>/architecture-summary.md` |
-| `modernizer` | `read` + `edit` + `execute` | `cartographer_done: true` in `state/<lang>/` | Modified source, `state/<lang>/changelog.md`, `state/<lang>/build-log.txt`, draft PR |
-| `compliance-officer` | `read` + `edit` (fileRegex: `state/.*`) | `modernizer_done: true` | `state/<lang>/compliance-report.json` |
+| Mode | Startup gate | Key output |
+|---|---|---|
+| `cartographer` | none | `state/<lang>/dependency-map.json`, `state/<lang>/architecture-summary.md` |
+| `modernizer` | `cartographer_done: true` | Modified source, `state/<lang>/changelog.md`, `state/<lang>/build-log.txt`, draft PR |
+| `compliance-officer` | `modernizer_done: true` | `state/<lang>/compliance-report.json` |
 
-**Build gates by language:**
-- Java: `mvn -q -f <target>/pom.xml test`
-- Python: `python3 -m pytest <target>/tests/ -q`
+**Bob constraint:** `execute` group does NOT support `fileRegex` — Modernizer's shell scope is prompt-constrained only (not schema-enforced). The PR step's `git`/`gh` commands are constrained by an explicit allowlist in `customInstructions` only.
 
-**Bob constraint:** `execute` group does NOT support `fileRegex` — Modernizer's shell scope is
-prompt-constrained only, not schema-enforced. The PR step's `git`/`gh` commands are constrained
-by an explicit allowlist in `customInstructions`, not by schema.
-
-## Self-Healing Loop (Modernizer — same mechanics, different gate per language)
-- Gate command is language-dependent (see above); must exit 0 to count as success
+## Self-Healing Loop (Modernizer)
+- Gate command is language-specific: `mvn -q -f <target>/pom.xml test` (Java) or `python3 -m pytest <target>/tests/ -q` (Python)
 - Cap: 5 attempts per file; `NEEDS MANUAL REVIEW` fallback if capped
-- Tool check before loop: `mvn -version` (Java) or `python3 -m pytest --version` (Python)
-- `modernizer_done: true` only set when zero files have `NEEDS MANUAL REVIEW` status
+- `modernizer_done: true` only set when **zero** files have `NEEDS MANUAL REVIEW` status
 - `modernizer_attempts[<file>]` resets to `0` on a clean pass, not at session start
 
-## GitHub PR Automation (Modernizer — runs after all three flags are true)
-- **Always draft:** `gh pr create --draft` — never merge-ready, never auto-merged
-- **Never pushes to main:** After one-time initial baseline commit, all pushes go to `chronos/modernize-<lang>-<ts>` branches only
-- **Staged files scoped to target:** `git add legacy-repo/ state/java/` or `git add legacy-repo-python/ state/python/` — never `git add .` post-init
-- **Auth:** Reuses existing `gh` keyring credentials (TECXBOY, `repo` scope). No new token needed.
-- **Remote:** `https://github.com/TECXBOY/Chronos.git`
-- **One-time init:** On first Agent run, commits entire repo to `main` and pushes. Sets `repo_initialized: true` in both lock files.
-- **PR URL** written to `state/<lang>/00-lock.json` as `pr_url` after creation.
-- **`state/<lang>/pr-body.md`** is written as temp file and passed to `gh pr create --body-file`; contains real changelog + compliance table, not placeholder text.
+## GitHub PR Automation (Modernizer — runs after all 3 flags true)
+- **Always draft:** `gh pr create --draft` — never merge-ready
+- **Never push to main post-init:** all post-init pushes go to `chronos/modernize-<lang>-<ts>` branches only
+- **Scoped staging:** `git add legacy-repo/ state/java/` or `git add legacy-repo-python/ state/python/` — never `git add .` post-init
+- **Auth:** existing `gh` keyring (TECXBOY, `repo` scope) — no new token needed
+- **`state/<lang>/pr-body.md`** is built from real changelog + compliance table (not placeholder text) and passed via `--body-file`
+- **PR URL** written to `state/<lang>/00-lock.json` as `pr_url` after creation
 
 **`state/<lang>/00-lock.json` schema (v3 — full):**
 ```json
@@ -110,47 +78,41 @@ by an explicit allowlist in `customInstructions`, not by schema.
   "compliance_done": false,
   "modernizer_attempts": {},
   "last_updated": null,
-  "repo_initialized": false,
+  "repo_initialized": true,
   "repo_remote": "https://github.com/TECXBOY/Chronos.git",
+  "pages_url": "https://tecxboy.github.io/Chronos/",
   "pr_url": null
 }
 ```
+Note: `repo_initialized` is **already `true`** in both `state/java/` and `state/python/` lock files. Skip STEP A of PR automation for all future runs.
 
 **Permitted git/gh commands** (only these, in the PR step):
-`git remote -v/add`, `git add <scoped>`, `git status --short`, `git commit`, `git push -u origin main` (once), `git checkout -b`, `git push origin <branch>`, `gh auth status`, `gh pr create --draft`, `gh pr view`
+`git remote -v/add`, `git add <scoped>`, `git status --short`, `git log --oneline -5`, `git commit`, `git push -u origin main` (once — already done), `git checkout -b`, `git push origin <branch>`, `gh auth status`, `gh pr create --draft`, `gh pr view`
 
 **Prohibited always:** `git push --force`, `git push origin main` (post-init), `gh pr merge`, `gh pr edit --ready-for-review`
 
 ## Python Target — Non-Obvious Constraints
-- Legacy `.py` files use Python 2 syntax — they are **SyntaxErrors** in Python 3 before modernization.
-  pytest will fail at collection time (not test failure), which IS the expected pre-modernization state.
-- `patient_repository.py` has both `import urllib2` AND `except Exception, e:` — two separate SyntaxErrors
-  that must both be fixed before pytest can collect any test that imports it.
-- `get_age_in_years()` uses `days_lived / 365.25` (legacy int-division form) — returns `29` not `30`
-  for a patient born exactly 30 years ago today. The age test will fail until this is replaced with
-  `today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))`.
-- `PatientRepository.find_all()` cannot be unit-tested (requires a live DB) — same constraint as Java.
-  Only `hash_for_lookup()` is tested in isolation.
-- Test stubs use anonymous subclasses (no pytest-mock / unittest.mock needed) — same pattern as Java suite.
+- **`import urllib2` is a SyntaxError in Python 3** — pytest fails at collection time (not a test failure) for ALL tests that import `patient_repository.py` (i.e., `test_patient_repository.py` AND `test_notification_service.py`). This is expected pre-modernization.
+- **`patient_repository.py` has TWO SyntaxErrors:** line 9 (`import urllib2`) AND line 50 (`except Exception, e:`). Both must be fixed before pytest can import `PatientRepository`.
+- **`get_age_in_years()` legacy form returns `29` not `30`** for a patient born exactly 30 years ago. Replace `days_lived / 365.25` → date arithmetic: `today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))`.
+- **`PatientRepository.find_all()` cannot be unit-tested** — requires live DB. Only `hash_for_lookup()` is tested. Same constraint as Java.
+- **Test imports:** `conftest.py` does `sys.path.insert(0, ...)` — no `pip install` or package needed to run tests.
+
+## Java Test Notes (non-obvious)
+- **No Mockito** — stubs use anonymous subclasses via package-private injection constructor in `PatientService`. Don't add Mockito.
+- **`PatientRepository.findAll()` cannot be unit-tested** — requires live MySQL. Only `hashForLookup()` is tested.
+- `pom.xml` deliberately keeps `commons-dbcp 1.4` (old, unpinned) — **seeded compliance issue, do not upgrade**.
 
 ## Dashboard (dashboard/index.html)
-- **Live hosted URL:** https://tecxboy.github.io/Chronos/ (GitHub Pages, auto-deploys on push to `main`)
-- **Java/Python toggle** in header switches `OUTPUTS()` between `state/java/` (Pages) or `../state/java/` (local)
+- **Live URL:** https://tecxboy.github.io/Chronos/ (GitHub Pages, auto-deploys on push to `main`)
 - Path auto-detection: `window.location.pathname.includes('/dashboard')` → local uses `../state/`, Pages uses `state/`
-- Local dev: `python3 -m http.server 8000` from `chronos/` root → `http://localhost:8000/dashboard/`
-- Switching target clears cached data; shows load-bar if target's state files don't exist (Python target = 404 → fallback)
-- `architecture-summary.md` is NOT fetched by the dashboard JS (only dep-map, changelog, compliance)
-- Pages workflow: `.github/workflows/pages.yml` — assembles `_site/` (index.html + state/) on every push to `main`
-- **Python target on Pages:** shows file-input fallback (404) until Cartographer + full Python pipeline runs and commits `state/python/` files to `main`
-
-## Seeded Issues — Do Not Fix (either target)
-Java: `DatabaseConfig.java` and PHI fields in `Patient.java` (SEC-001, GDPR-032, GDPR-005, HIPAA-164)
-Python: `config.py`, `patient.py`, `patient_repository.py`, `audit_logger.py`, `notification_service.py`
-These are intentional Compliance Officer demo targets — do not remediate them.
+- Local dev: `python3 -m http.server 8000` from repo root → `http://localhost:8000/dashboard/`
+- `architecture-summary.md` is **NOT** fetched by the dashboard JS (only dep-map, changelog, compliance)
+- Python target on Pages: shows file-input fallback (404) until Python pipeline runs and commits `state/python/` files
 
 ## Output Schemas (identical for both targets)
 
-**`state/<lang>/changelog.md`** — dashboard parser exact-match format:
+**`state/<lang>/changelog.md`** — dashboard parser is exact-match:
 ```
 ## <file path>
 **Before:** ```<snippet>```
@@ -167,3 +129,14 @@ These are intentional Compliance Officer demo targets — do not remediate them.
 ```json
 { "files": [{ "path": "", "package": "", "imports": [], "calls": [], "deprecated_apis_used": [] }] }
 ```
+
+## Seeded Issues — Do Not Fix (either target)
+Java: `DatabaseConfig.java` (SEC-001 ×3), `Patient.java` (GDPR-032, GDPR-005, HIPAA-164), `PatientRepository.java` (GDPR-032, SEC-002), `AuditLogger.java` (GDPR-005), `NotificationService.java` (SEC-001), `PatientService.java` (HIPAA-164)
+Python: `config.py` (SEC-001), `patient.py` (GDPR-032/HIPAA-164/GDPR-005), `patient_repository.py` (SEC-002), `audit_logger.py` (GDPR-005), `notification_service.py` (SEC-001)
+These are intentional Compliance Officer demo targets — **do not remediate them**.
+
+## Reference Priority
+1. `REBUILD_BLUEPRINT.md` — authoritative architecture (v3 section §5 is current)
+2. `SPEC.md §4` — compliance rule set (unchanged, language-agnostic)
+3. `state/<lang>/00-lock.json` — live pipeline progress per target
+4. `PROJECT_BRIEF.md` — hackathon scope/constraints
